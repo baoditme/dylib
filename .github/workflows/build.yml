@@ -1,0 +1,40 @@
+name: Build Dylib
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Theos
+        run: |
+          export THEOS=$HOME/theos
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+          rm -rf $THEOS/sdks
+          git clone https://github.com/theos/sdks.git $THEOS/sdks
+          
+      - name: Install ldid
+        run: brew install ldid
+        
+      - name: Build
+        run: |
+          export THEOS=$HOME/theos
+          make clean && make
+          
+      - name: Package to IPA (giả lập để lấy dylib)
+        run: |
+          make package
+          
+      - name: Find and Upload Dylib
+        run: |
+          # Tìm file dylib vừa build
+          DYLIB_PATH=$(find .theos -name "*.dylib" -type f | head -n 1)
+          echo "Found dylib at: $DYLIB_PATH"
+          ldid -S "$DYLIB_PATH"
+          cp "$DYLIB_PATH" ./SpyDylib.dylib
+          
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpyDylib
+          path: SpyDylib.dylib
