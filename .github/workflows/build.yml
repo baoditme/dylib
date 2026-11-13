@@ -16,21 +16,23 @@ jobs:
       - name: Install ldid
         run: brew install ldid
         
-      - name: Build
+      - name: Build and Package
         run: |
           export THEOS=$HOME/theos
-          make clean && make
+          make clean && make package
           
-      - name: Package to IPA (giả lập để lấy dylib)
+      - name: Find, Sign and Upload Dylib
         run: |
-          make package
-          
-      - name: Find and Upload Dylib
-        run: |
-          # Tìm file dylib vừa build
-          DYLIB_PATH=$(find .theos -name "*.dylib" -type f | head -n 1)
+          # Tìm file dylib trong thư mục build của Theos
+          DYLIB_PATH=$(find .theos -name "SpyDylib.dylib" -type f | head -n 1)
           echo "Found dylib at: $DYLIB_PATH"
+          
+          if [ -z "$DYLIB_PATH" ]; then echo "Build failed to produce dylib"; exit 1; fi
+          
+          # Sign file dylib chuẩn SHA256
           ldid -S "$DYLIB_PATH"
+          
+          # Copy ra ngoài cho dễ tải
           cp "$DYLIB_PATH" ./SpyDylib.dylib
           
       - name: Upload
